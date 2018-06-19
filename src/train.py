@@ -4,26 +4,15 @@ import time
 import tensorflow as tf
 
 import data_inputs
+from configs import *
 from model import code_discriminator, discriminator, encoder, generator
-
-# 避免出现 log(0)
-EPS = 1e-12
-BATCH_SIZE = 64
-# 低分辨图片的大小
-INPUT_SIZE = 32
-SCALE_FACTOR = 4
-# 高分辨图片的大小
-LABEL_SIZE = SCALE_FACTOR * INPUT_SIZE
-NUM_CHENNELS = 3
-# 需要保存的模型的次数
-MAX_CKPT_TO_KEEP = 50
-LEARN_RATE = 8e-4
-NUM_EPOCH = 100
+from utils import visualize_samples, load, save
 
 
 def main():
     # 导入高分辨和低分辨的图片
-    LR_batch, HR_batch = data_inputs.batch_queue_for_training('../data/train/')
+    LR_batch, HR_batch = data_inputs.batch_queue_for_training(
+        TRAINING_DATA_PATH)
 
     coord = tf.train.Coordinator()
 
@@ -39,6 +28,13 @@ def main():
 
     # the saver will restore all model's variables during training
     saver = tf.train.Saver(tf.global_variables(), max_to_keep=MAX_CKPT_TO_KEEP)
+    try:
+        saved_global_step = load(saver, sess, CHECKPOINTS_PATH)
+        if saved_global_step is None:
+            saved_global_step = 0
+    except:
+        raise ValueError(
+            "You have changed the model, Please Delete CheckPoints!")
 
     # ========================================
     #           Create Network
@@ -127,8 +123,9 @@ def main():
     code_discriminator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
         code_discriminator_loss, var_list=code_discriminator_vars)
 
-    num_item_per_epoch = len(os.listdir('../data/train/')) // BATCH_SIZE
+    num_item_per_epoch = len(os.listdir(TRAINING_DATA_PATH)) // BATCH_SIZE
     time_i = time.time()
+    step = 0
 
     for epoch in range(NUM_EPOCH):
         for item in range(num_item_per_epoch):
@@ -148,7 +145,29 @@ def main():
             _, c_loss = sess.run(
                 [code_discriminator_opt, code_discriminator_loss],
                 feed_dict=feed_dict)
-            print()
+
+            sr_img = sess.run(x_super_res, feed_dict=feed_dict)
+
+            message = 'Epoch [{:3d}/{:3d}]'.format(epoch + 1, NUM_EPOCH) \
+                + '[{:4d}/{:4d}]'.format(item + 1, num_item_per_epoch) \
+                + 'ge_loss={:6.8f}, '.format(ge_loss) \
+                + 'd_loss={:6.8f}, '.format(d_loss) \
+                + 'c_loss={:6.8f}, '.format(c_loss) \
+                + 'Time={:.2f}.'.format(time.time() - time_i)
+            print(message)
+            step += 1
+
+        visualize_samples(
+            sess,
+            HR_images,
+            sr_img,
+            filename=os.path.join(INFERENCES_SAVE_PATH,
+                                  'trian-epoch-{:03d}.png'.format(epoch + 1)))
+
+        save(saver, sess, CHECKPOINTS_PATH, step)
+
+    coord.request_stop()
+    coord.join(threads=threads)
 
 
 if __name__ == '__main__':
