@@ -1,29 +1,7 @@
 from os.path import join
 
 import tensorflow as tf
-
-# patch generation
-PATCH_SIZE = 128
-
-# model and training
-BATCH_SIZE = 64
-# the image size input to the network
-INPUT_SIZE = 32
-SCALE_FACTOR = 4
-LABEL_SIZE = SCALE_FACTOR * INPUT_SIZE
-# the high resolution image size used as label
-NUM_CHENNELS = 3
-
-# data queue
-MIN_QUEUE_EXAMPLES = 1024
-NUM_PROCESS_THREADS = 3
-
-# data argumentation
-MAX_RANDOM_BRIGHTNESS = -1
-# RANDOM_CONTRAST_RANGE = [0.8, 1.2]
-RANDOM_CONTRAST_RANGE = [0.8]
-GAUSSIAN_NOISE_STD = -1
-JPEG_NOISE_LEVEL = -1
+from configs import *
 
 
 def batch_queue_for_training(data_path):
