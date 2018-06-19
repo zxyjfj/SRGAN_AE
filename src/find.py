@@ -1,7 +1,7 @@
-import cv2
-import sys
 import os.path
 from glob import glob
+
+import cv2
 
 
 def detect(filename, cascade_file="haarcascade_frontalface_alt.xml"):
