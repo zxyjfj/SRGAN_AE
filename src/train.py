@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import os
 import time
 
@@ -7,12 +8,35 @@ import data_inputs
 from configs import *
 from model import code_discriminator, discriminator, encoder, generator
 from utils import visualize_samples, load, save
+=======
+import tensorflow as tf
+
+import data_inputs
+from model import code_discriminator, discriminator, encoder, generator
+
+# 避免出现 log(0)
+EPS = 1e-12
+BATCH_SIZE = 64
+# 低分辨图片的大小
+INPUT_SIZE = 32
+SCALE_FACTOR = 4
+# 高分辨图片的大小
+LABEL_SIZE = SCALE_FACTOR * INPUT_SIZE
+NUM_CHENNELS = 3
+# 需要保存的模型的次数
+MAX_CKPT_TO_KEEP = 50
+LEARN_RATE = 8e-4
+>>>>>>> 2dd5de4185cd8d46a8f07a4bc5b0200b4a8211e7
 
 
 def main():
     # 导入高分辨和低分辨的图片
+<<<<<<< HEAD
     LR_batch, HR_batch = data_inputs.batch_queue_for_training(
         TRAINING_DATA_PATH)
+=======
+    LR_batch, HR_batch = data_inputs.batch_queue_for_training('../data/train/')
+>>>>>>> 2dd5de4185cd8d46a8f07a4bc5b0200b4a8211e7
 
     coord = tf.train.Coordinator()
 
@@ -28,6 +52,7 @@ def main():
 
     # the saver will restore all model's variables during training
     saver = tf.train.Saver(tf.global_variables(), max_to_keep=MAX_CKPT_TO_KEEP)
+<<<<<<< HEAD
     try:
         saved_global_step = load(saver, sess, CHECKPOINTS_PATH)
         if saved_global_step is None:
@@ -35,6 +60,8 @@ def main():
     except:
         raise ValueError(
             "You have changed the model, Please Delete CheckPoints!")
+=======
+>>>>>>> 2dd5de4185cd8d46a8f07a4bc5b0200b4a8211e7
 
     # ========================================
     #           Create Network
@@ -123,6 +150,7 @@ def main():
     code_discriminator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
         code_discriminator_loss, var_list=code_discriminator_vars)
 
+<<<<<<< HEAD
     num_item_per_epoch = len(os.listdir(TRAINING_DATA_PATH)) // BATCH_SIZE
     time_i = time.time()
     step = 0
@@ -169,6 +197,8 @@ def main():
     coord.request_stop()
     coord.join(threads=threads)
 
+=======
+>>>>>>> 2dd5de4185cd8d46a8f07a4bc5b0200b4a8211e7
 
 if __name__ == '__main__':
     main()
