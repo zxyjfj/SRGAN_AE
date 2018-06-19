@@ -10,7 +10,7 @@ def detect(filename, cascade_file="haarcascade_frontalface_alt.xml"):
 
     cascade = cv2.CascadeClassifier(cascade_file)
     image = cv2.imread(filename)
-    if (image == None).any():  # read failure and skip this image
+    if image == None:  # read failure and skip this image
         return
     if image.shape[2] == 1:  # drop gray images
         return
