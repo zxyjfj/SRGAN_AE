@@ -1,0 +1,155 @@
+import os
+import time
+
+import tensorflow as tf
+
+import data_inputs
+from model import code_discriminator, discriminator, encoder, generator
+
+# 避免出现 log(0)
+EPS = 1e-12
+BATCH_SIZE = 64
+# 低分辨图片的大小
+INPUT_SIZE = 32
+SCALE_FACTOR = 4
+# 高分辨图片的大小
+LABEL_SIZE = SCALE_FACTOR * INPUT_SIZE
+NUM_CHENNELS = 3
+# 需要保存的模型的次数
+MAX_CKPT_TO_KEEP = 50
+LEARN_RATE = 8e-4
+NUM_EPOCH = 100
+
+
+def main():
+    # 导入高分辨和低分辨的图片
+    LR_batch, HR_batch = data_inputs.batch_queue_for_training('../data/train/')
+
+    coord = tf.train.Coordinator()
+
+    # 初始化tensorflow
+    sess = tf.Session()
+    init = [
+        tf.local_variables_initializer(),
+        tf.global_variables_initializer()
+    ]
+    sess.run(init)
+    # Start the queue runners (make batches).
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+
+    # the saver will restore all model's variables during training
+    saver = tf.train.Saver(tf.global_variables(), max_to_keep=MAX_CKPT_TO_KEEP)
+
+    # ========================================
+    #           Create Network
+    # ========================================
+    LR_holders = tf.placeholder(
+        dtype=tf.float32,
+        shape=[BATCH_SIZE, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
+    HR_holders = tf.placeholder(
+        dtype=tf.float32,
+        shape=[BATCH_SIZE, LABEL_SIZE, LABEL_SIZE, NUM_CHENNELS])
+
+    # ----------------------------------------
+    #               Generator
+
+    with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
+        x_super_res = generator(LR_holders)
+
+    # ----------------------------------------
+    #               Discriminator
+
+    with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
+        y_fake = discriminator(x_super_res)
+
+    with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
+        y_real = discriminator(HR_holders)
+
+    # ----------------------------------------
+    #               Encoder
+
+    with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
+        HR_encoded = encoder(HR_holders)
+
+    with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
+        x_encoded = encoder(x_super_res)
+
+    # ----------------------------------------
+    #           Code Discriminator
+
+    with tf.variable_scope('code_discriminator', reuse=tf.AUTO_REUSE):
+        c_fake = code_discriminator(x_encoded)
+
+    with tf.variable_scope('code_discriminator', reuse=tf.AUTO_REUSE):
+        c_real = code_discriminator(HR_encoded)
+
+    # ========================================
+    #            Define Loss
+    # ========================================
+
+    generator_loss = tf.reduce_mean(y_fake)
+    discriminator_loss = tf.reduce_mean(y_real) - tf.reduce_mean(y_fake)
+    code_generator_loss = tf.reduce_mean(c_fake)
+    code_discriminator_loss = tf.reduce_mean(c_real) - tf.reduce_mean(c_fake)
+    mse_loss = tf.reduce_mean(tf.squared_difference(x_super_res, HR_holders))
+
+    gene_loss = mse_loss + generator_loss + code_generator_loss
+
+    # ========================================
+    #            Create Optimizer
+    # ========================================
+
+    variables = tf.trainable_variables()
+    encoder_vars = [var for var in variables if 'encoder/' in var.name]
+    generator_vars = [var for var in variables if 'generator/' in var.name]
+    discriminator_vars = [
+        var for var in variables if 'discriminator/' in var.name
+    ]
+    code_discriminator_vars = [
+        var for var in variables if 'code_discriminator/' in var.name
+    ]
+
+    # ----------------------------------------
+    #          Generator Encoder
+
+    generator_encoder_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
+        gene_loss, var_list=generator_vars + encoder_vars)
+
+    # ----------------------------------------
+    #               Discriminator
+
+    discriminator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
+        discriminator_loss, var_list=discriminator_vars)
+
+    # ----------------------------------------
+    #           Code Discriminator
+
+    code_discriminator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
+        code_discriminator_loss, var_list=code_discriminator_vars)
+
+    num_item_per_epoch = len(os.listdir('../data/train/')) // BATCH_SIZE
+    time_i = time.time()
+
+    for epoch in range(NUM_EPOCH):
+        for item in range(num_item_per_epoch):
+            LR_images, HR_images = sess.run([LR_batch, HR_batch])
+
+            feed_dict = {LR_holders: LR_images, HR_holders: HR_images}
+
+            # ------------------train G twice-------------------
+            _, ge_loss = sess.run(
+                [generator_encoder_opt, gene_loss], feed_dict=feed_dict)
+            _, ge_loss = sess.run(
+                [generator_encoder_opt, gene_loss], feed_dict=feed_dict)
+            # ------------------train D ------------------------
+            _, d_loss = sess.run(
+                [discriminator_opt, discriminator_loss], feed_dict=feed_dict)
+            # ------------------train code_D -------------------
+            _, c_loss = sess.run(
+                [code_discriminator_opt, code_discriminator_loss],
+                feed_dict=feed_dict)
+            print()
+
+
+if __name__ == '__main__':
+    main()
