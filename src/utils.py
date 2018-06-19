@@ -14,6 +14,7 @@ def visualize_samples(sess, high_imgs, gene_output, n=8, filename=None):
 
     image = sess.run(images)
     scipy.misc.toimage(image, cmin=0.0, cmax=1.0).save(filename)
+    print(' Done.')
 
 
 def load(saver, sess, logdir):
