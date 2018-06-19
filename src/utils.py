@@ -1,7 +1,7 @@
 import os
 import sys
 
-import scipy.msic
+import scipy.misc
 import tensorflow as tf
 
 
