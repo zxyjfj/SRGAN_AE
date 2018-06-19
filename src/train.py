@@ -69,8 +69,6 @@ def main():
     code_discriminator_loss = tf.reduce_mean(c_real) - tf.reduce_mean(c_fake)
     mse_loss = tf.reduce_mean(tf.squared_difference(x_super_res, HR_holders))
 
-    gene_loss = mse_loss + generator_loss + code_generator_loss
-
     # ========================================
     #            Create Optimizer
     # ========================================
@@ -86,10 +84,15 @@ def main():
     ]
 
     # ----------------------------------------
-    #          Generator Encoder
+    #               Encoder
+    encoder_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
+        code_generator_loss, var_list=encoder_vars)
 
-    generator_encoder_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
-        gene_loss, var_list=generator_vars + encoder_vars)
+    # ----------------------------------------
+    #               Generator
+
+    generator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
+        generator_loss, var_list=generator_vars)
 
     # ----------------------------------------
     #               Discriminator
@@ -98,7 +101,7 @@ def main():
         discriminator_loss, var_list=discriminator_vars)
 
     # ----------------------------------------
-    #           Code Discriminator
+    #               Code Discriminator
 
     code_discriminator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
         code_discriminator_loss, var_list=code_discriminator_vars)
@@ -135,13 +138,16 @@ def main():
             feed_dict = {LR_holders: LR_images, HR_holders: HR_images}
 
             # ------------------train G twice-------------------
-            _, ge_loss = sess.run(
-                [generator_encoder_opt, gene_loss], feed_dict=feed_dict)
-            _, ge_loss = sess.run(
-                [generator_encoder_opt, gene_loss], feed_dict=feed_dict)
+            _, g_loss = sess.run(
+                [generator_opt, generator_loss], feed_dict=feed_dict)
+            _, g_loss = sess.run(
+                [generator_opt, generator_loss], feed_dict=feed_dict)
             # ------------------train D ------------------------
             _, d_loss = sess.run(
                 [discriminator_opt, discriminator_loss], feed_dict=feed_dict)
+            # ------------------train encoder ------------------
+            _, e_loss = sess.run(
+                [encoder_opt, code_discriminator_loss], feed_dict=feed_dict)
             # ------------------train code_D -------------------
             _, c_loss = sess.run(
                 [code_discriminator_opt, code_discriminator_loss],
@@ -151,8 +157,9 @@ def main():
 
             message = 'Epoch [{:3d}/{:3d}]'.format(epoch + 1, NUM_EPOCH) \
                 + '[{:4d}/{:4d}]'.format(item + 1, num_item_per_epoch) \
-                + 'ge_loss={:6.8f}, '.format(ge_loss) \
+                + 'g_loss={:6.8f}, '.format(g_loss) \
                 + 'd_loss={:6.8f}, '.format(d_loss) \
+                + 'e_loss={:6.8f}, '.format(e_loss) \
                 + 'c_loss={:6.8f}, '.format(c_loss) \
                 + 'Time={:.2f}.'.format(time.time() - time_i)
             print(message)
