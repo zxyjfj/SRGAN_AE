@@ -67,9 +67,10 @@ def main():
     discriminator_loss = tf.reduce_mean(y_real) - tf.reduce_mean(y_fake)
     code_generator_loss = tf.reduce_mean(c_fake)
     code_discriminator_loss = tf.reduce_mean(c_real) - tf.reduce_mean(c_fake)
-    mse_loss = tf.reduce_mean(tf.squared_difference(x_super_res, HR_holders))
+    reconstruction_loss = reconstruction_loss_weight * tf.reduce_mean(
+        tf.squared_difference(x_super_res, HR_holders))
 
-    generator_encoder_loss = generator_loss + code_generator_loss + mse_loss
+    generator_encoder_loss = generator_loss + code_generator_loss + reconstruction_loss
 
     # ========================================
     #            Create Optimizer
@@ -102,6 +103,18 @@ def main():
 
     code_discriminator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
         code_discriminator_loss, var_list=code_discriminator_vars)
+
+    # for summaries
+    with tf.name_scope('Summary'):
+        tf.summary.image('inputs', LR_holders, max_outputs=4)
+        tf.summary.image('generator', x_super_res, max_outputs=4)
+        tf.summary.image('targets', HR_holders, max_outputs=4)
+        tf.summary.scalar('generator_loss', generator_loss)
+        tf.summary.scalar('discriminator_loss', discriminator_loss)
+        tf.summary.scalar('code_generator_loss', code_generator_loss)
+        tf.summary.scalar('code_discriminator_loss', code_discriminator_loss)
+        tf.summary.scalar('reconstruction_loss', reconstruction_loss)
+        tf.summary.scalar('generator_encoder_loss', generator_encoder_loss)
 
     # 初始化tensorflow
     sess = tf.Session()

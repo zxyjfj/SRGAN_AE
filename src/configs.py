@@ -4,6 +4,8 @@ INFERENCES_SAVE_PATH = '../imgs'
 TRAINING_SUMMARY_PATH = '../summary'
 CHECKPOINTS_PATH = '../checkpoints'
 
+reconstruction_loss_weight = 40
+
 # 避免出现 log(0)
 EPS = 1e-12
 BATCH_SIZE = 64
