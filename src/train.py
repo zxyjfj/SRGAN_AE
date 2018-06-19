@@ -16,16 +16,6 @@ def main():
 
     coord = tf.train.Coordinator()
 
-    # 初始化tensorflow
-    sess = tf.Session()
-    init = [
-        tf.local_variables_initializer(),
-        tf.global_variables_initializer()
-    ]
-    sess.run(init)
-    # Start the queue runners (make batches).
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
-
     # ========================================
     #           Create Network
     # ========================================
@@ -113,6 +103,14 @@ def main():
     code_discriminator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
         code_discriminator_loss, var_list=code_discriminator_vars)
 
+    # 初始化tensorflow
+    sess = tf.Session()
+    init = [
+        tf.local_variables_initializer(),
+        tf.global_variables_initializer()
+    ]
+    sess.run(init)
+
     # the saver will restore all model's variables during training
     saver = tf.train.Saver(tf.global_variables(), max_to_keep=MAX_CKPT_TO_KEEP)
     try:
@@ -122,6 +120,9 @@ def main():
     except:
         raise ValueError(
             "You have changed the model, Please Delete CheckPoints!")
+
+    # Start the queue runners (make batches).
+    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
     num_item_per_epoch = len(os.listdir(TRAINING_DATA_PATH)) // BATCH_SIZE
     time_i = time.time()
