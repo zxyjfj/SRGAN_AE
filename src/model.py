@@ -1,54 +1,6 @@
 import tensorflow as tf
 
-
-def lrelu(x, leak=0.02, name="lrelu"):
-    ''' Leaky ReLU '''
-    return tf.maximum(x, leak * x)
-
-
-def res_block(inputs,
-              filters,
-              kernel_size,
-              strides=(1, 1),
-              activation=tf.nn.relu,
-              kernel_initializer=None):
-    x = inputs
-
-    # -----
-    x = tf.layers.conv2d(
-        x,
-        filters,
-        kernel_size=kernel_size,
-        strides=strides,
-        padding='SAME',
-        kernel_initializer=kernel_initializer)
-    x = tf.layers.batch_normalization(
-        x,
-        axis=3,
-        epsilon=1e-5,
-        momentum=0.1,
-        training=True,
-        gamma_initializer=kernel_initializer)
-    x = activation(x)
-
-    # -----
-    x = tf.layers.conv2d(
-        x,
-        filters,
-        kernel_size=kernel_size,
-        strides=strides,
-        padding='SAME',
-        kernel_initializer=kernel_initializer)
-    x = tf.layers.batch_normalization(
-        x,
-        axis=3,
-        epsilon=1e-5,
-        momentum=0.1,
-        training=True,
-        gamma_initializer=kernel_initializer)
-    x = activation(x + inputs)
-
-    return x
+from utils import lrelu, res_block
 
 
 def encoder(inputs, latern_dim=128):
