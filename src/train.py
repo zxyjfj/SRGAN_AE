@@ -8,6 +8,8 @@ from configs import *
 from model import code_discriminator, discriminator, encoder, generator
 from utils import visualize_samples, load, save
 
+is_WANGAN_GP = True
+
 
 def main():
     # 导入高分辨和低分辨的图片
@@ -36,10 +38,10 @@ def main():
     #               Discriminator
 
     with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-        y_fake = discriminator(x_super_res)
+        y_fake = discriminator(x_super_res, is_GP=is_WANGAN_GP)
 
     with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-        y_real = discriminator(HR_holders)
+        y_real = discriminator(HR_holders, is_GP=is_WANGAN_GP)
 
     # ----------------------------------------
     #               Encoder
@@ -60,19 +62,6 @@ def main():
         c_real = code_discriminator(HR_encoded)
 
     # ========================================
-    #            Define Loss
-    # ========================================
-
-    generator_loss = tf.reduce_mean(y_fake)
-    discriminator_loss = tf.reduce_mean(y_real) - tf.reduce_mean(y_fake)
-    code_generator_loss = tf.reduce_mean(c_fake)
-    code_discriminator_loss = tf.reduce_mean(c_real) - tf.reduce_mean(c_fake)
-    reconstruction_loss = reconstruction_loss_weight * tf.reduce_mean(
-        tf.squared_difference(x_super_res, HR_holders))
-
-    generator_encoder_loss = generator_loss + code_generator_loss + reconstruction_loss
-
-    # ========================================
     #            Create Optimizer
     # ========================================
 
@@ -85,6 +74,45 @@ def main():
     code_discriminator_vars = [
         var for var in variables if 'code_discriminator/' in var.name
     ]
+    # ========================================
+    #            Define Loss
+    # ========================================
+
+    generator_loss = tf.reduce_mean(y_fake)
+    discriminator_loss = tf.reduce_mean(y_real) - tf.reduce_mean(y_fake)
+    code_generator_loss = tf.reduce_mean(c_fake)
+    code_discriminator_loss = tf.reduce_mean(c_real) - tf.reduce_mean(c_fake)
+    reconstruction_loss = tf.reduce_mean(
+        tf.squared_difference(x_super_res, HR_holders))
+
+    # ------------WGAN-GP---------------------
+    if is_WANGAN_GP:
+        alpha = tf.random_uniform(
+            shape=[BATCH_SIZE, LABEL_SIZE, LABEL_SIZE, NUM_CHENNELS],
+            minval=0.0,
+            maxval=1.0)
+        difference1 = x_super_res - HR_holders
+        interpolate1 = HR_holders + (alpha * difference1)
+        gradient1 = tf.gradients(discriminator(interpolate1),
+                                 [interpolate1])[0]
+        slope1 = tf.sqrt(
+            tf.reduce_sum(tf.square(gradient1), reduction_indices=[1]))
+        gradient_penalty1 = tf.reduce_mean((slope1 - 1.0)**2)
+        discriminator_loss += LAMBDA * gradient_penalty1
+
+        beta = tf.random_uniform(
+            shape=[BATCH_SIZE, 128], minval=0.0, maxval=1.0)
+        difference2 = x_encoded - HR_encoded
+        interpolate2 = HR_encoded + (beta * difference2)
+        gradient2 = tf.gradients(
+            code_discriminator(interpolate2), [interpolate2])[0]
+        slope2 = tf.sqrt(
+            tf.reduce_sum(tf.square(gradient2), reduction_indices=[1]))
+        gradient_penalty2 = tf.reduce_mean((slope2 - 1.0)**2)
+        code_discriminator_loss += LAMBDA * gradient_penalty2
+
+    generator_encoder_loss = generator_loss + code_generator_loss \
+    + reconstruction_loss_weight * reconstruction_loss
 
     # ----------------------------------------
     #               Generator
@@ -136,6 +164,9 @@ def main():
 
     # Start the queue runners (make batches).
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    # Merage all the summaries and write them out to TRAINING_DIR
+    merged_summary = tf.summary.merge_all()
+    summary_writer = tf.summary.FileWriter(TRAINING_SUMMARY_PATH, sess.graph)
 
     num_item_per_epoch = len(os.listdir(TRAINING_DATA_PATH)) // BATCH_SIZE
     time_i = time.time()
@@ -163,6 +194,9 @@ def main():
                 feed_dict=feed_dict)
 
             sr_img = sess.run(x_super_res, feed_dict=feed_dict)
+
+            summary = sess.run(merged_summary, feed_dict=feed_dict)
+            summary_writer.add_summary(summary, global_step=step)
 
             message = 'Epoch [{:3d}/{:3d}]'.format(epoch + 1, NUM_EPOCH) \
                 + '[{:4d}/{:4d}]'.format(item + 1, num_item_per_epoch) \

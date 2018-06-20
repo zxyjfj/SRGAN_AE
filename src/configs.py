@@ -5,6 +5,8 @@ TRAINING_SUMMARY_PATH = '../summary'
 CHECKPOINTS_PATH = '../checkpoints'
 
 reconstruction_loss_weight = 40
+# Gradient penalty lambda hyperparameter
+LAMBDA = 10
 
 # 避免出现 log(0)
 EPS = 1e-12
