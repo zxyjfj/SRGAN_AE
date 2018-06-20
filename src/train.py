@@ -32,7 +32,7 @@ def main():
     #               Generator
 
     with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
-        x_super_res = generator(LR_holders)
+        x_super_res = generator(LR_holders, is_GP=is_WANGAN_GP)
 
     # ----------------------------------------
     #               Discriminator
@@ -47,10 +47,10 @@ def main():
     #               Encoder
 
     with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
-        HR_encoded = encoder(HR_holders)
+        HR_encoded = encoder(HR_holders, is_GP=is_WANGAN_GP)
 
     with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
-        x_encoded = encoder(x_super_res)
+        x_encoded = encoder(x_super_res, is_GP=is_WANGAN_GP)
 
     # ----------------------------------------
     #           Code Discriminator
