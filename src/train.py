@@ -14,7 +14,7 @@ is_WANGAN_GP = True
 def main():
     # 导入高分辨和低分辨的图片
     LR_batch, HR_batch = data_inputs.batch_queue_for_training(
-        TRAINING_DATA_PATH)
+        TRAIN_DATA_PATH)
 
     coord = tf.train.Coordinator()
 
@@ -166,9 +166,9 @@ def main():
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
     # Merage all the summaries and write them out to TRAINING_DIR
     merged_summary = tf.summary.merge_all()
-    summary_writer = tf.summary.FileWriter(TRAINING_SUMMARY_PATH, sess.graph)
+    summary_writer = tf.summary.FileWriter(TRAIN_SUMMARY_PATH, sess.graph)
 
-    num_item_per_epoch = len(os.listdir(TRAINING_DATA_PATH)) // BATCH_SIZE
+    num_item_per_epoch = len(os.listdir(TRAIN_DATA_PATH)) // BATCH_SIZE
     time_i = time.time()
     step = 0
 

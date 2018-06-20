@@ -1,7 +1,8 @@
 # data path and log path
-TRAINING_DATA_PATH = '../data/train'
+TRAIN_DATA_PATH = '../data/train'
+TEST_DATA_PATH = '../data/test'
 INFERENCES_SAVE_PATH = '../imgs'
-TRAINING_SUMMARY_PATH = '../summary'
+TRAIN_SUMMARY_PATH = '../summary'
 CHECKPOINTS_PATH = '../checkpoints'
 
 reconstruction_loss_weight = 40
