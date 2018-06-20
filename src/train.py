@@ -8,13 +8,10 @@ from configs import *
 from model import code_discriminator, discriminator, encoder, generator
 from utils import visualize_samples, load, save
 
-is_WANGAN_GP = True
-
 
 def main():
     # 导入高分辨和低分辨的图片
-    LR_batch, HR_batch = data_inputs.batch_queue_for_training(
-        TRAIN_DATA_PATH)
+    LR_batch, HR_batch = data_inputs.batch_queue_for_training(TRAIN_DATA_PATH)
 
     coord = tf.train.Coordinator()
 
@@ -32,25 +29,25 @@ def main():
     #               Generator
 
     with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
-        x_super_res = generator(LR_holders, is_GP=is_WANGAN_GP)
+        x_super_res = generator(LR_holders)
 
     # ----------------------------------------
     #               Discriminator
 
     with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-        y_fake = discriminator(x_super_res, is_GP=is_WANGAN_GP)
+        y_fake = discriminator(x_super_res)
 
     with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-        y_real = discriminator(HR_holders, is_GP=is_WANGAN_GP)
+        y_real = discriminator(HR_holders)
 
     # ----------------------------------------
     #               Encoder
 
     with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
-        HR_encoded = encoder(HR_holders, is_GP=is_WANGAN_GP)
+        HR_encoded = encoder(HR_holders)
 
     with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
-        x_encoded = encoder(x_super_res, is_GP=is_WANGAN_GP)
+        x_encoded = encoder(x_super_res)
 
     # ----------------------------------------
     #           Code Discriminator
@@ -75,41 +72,23 @@ def main():
         var for var in variables if 'code_discriminator/' in var.name
     ]
     # ========================================
-    #            Define Loss
+    #            Define Loss(WGAN/DCGAN有问题)
     # ========================================
 
     generator_loss = tf.reduce_mean(y_fake)
     discriminator_loss = tf.reduce_mean(y_real) - tf.reduce_mean(y_fake)
     code_generator_loss = tf.reduce_mean(c_fake)
     code_discriminator_loss = tf.reduce_mean(c_real) - tf.reduce_mean(c_fake)
+    # generator_loss = tf.reduce_mean(-tf.log(y_fake + EPS))
+    # discriminator_loss = tf.reduce_mean(
+    #     -tf.log(y_real + EPS)) - tf.reduce_mean(-tf.log(1 - y_fake + EPS))
+    # code_generator_loss = tf.reduce_mean(-tf.log(c_fake + EPS))
+    # code_discriminator_loss = tf.reduce_mean(
+    #     -tf.log(c_real + EPS)) - tf.reduce_mean(-tf.log(1 - c_fake + EPS))
     reconstruction_loss = tf.reduce_mean(
         tf.squared_difference(x_super_res, HR_holders))
 
-    # ------------WGAN-GP---------------------
-    if is_WANGAN_GP:
-        alpha = tf.random_uniform(
-            shape=[BATCH_SIZE, LABEL_SIZE, LABEL_SIZE, NUM_CHENNELS],
-            minval=0.0,
-            maxval=1.0)
-        difference1 = x_super_res - HR_holders
-        interpolate1 = HR_holders + (alpha * difference1)
-        gradient1 = tf.gradients(discriminator(interpolate1),
-                                 [interpolate1])[0]
-        slope1 = tf.sqrt(
-            tf.reduce_sum(tf.square(gradient1), reduction_indices=[1]))
-        gradient_penalty1 = tf.reduce_mean((slope1 - 1.0)**2)
-        discriminator_loss += LAMBDA * gradient_penalty1
 
-        beta = tf.random_uniform(
-            shape=[BATCH_SIZE, 128], minval=0.0, maxval=1.0)
-        difference2 = x_encoded - HR_encoded
-        interpolate2 = HR_encoded + (beta * difference2)
-        gradient2 = tf.gradients(
-            code_discriminator(interpolate2), [interpolate2])[0]
-        slope2 = tf.sqrt(
-            tf.reduce_sum(tf.square(gradient2), reduction_indices=[1]))
-        gradient_penalty2 = tf.reduce_mean((slope2 - 1.0)**2)
-        code_discriminator_loss += LAMBDA * gradient_penalty2
 
     generator_encoder_loss = generator_loss + code_generator_loss \
     + reconstruction_loss_weight * reconstruction_loss
@@ -131,6 +110,25 @@ def main():
 
     code_discriminator_opt = tf.train.RMSPropOptimizer(LEARN_RATE).minimize(
         code_discriminator_loss, var_list=code_discriminator_vars)
+
+    # ========================================
+    #               Important
+    # ========================================
+    d_clip = []
+    for var in discriminator_vars:
+        clip_bounds = [-0.01, 0.01]
+        d_clip.append(
+            tf.assign(var, tf.clip_by_value(var, clip_bounds[0],
+                                            clip_bounds[1])))
+    clip_disc_weight = tf.group(*d_clip)
+
+    c_clip = []
+    for var in code_discriminator_vars:
+        clip_bounds = [-0.01, 0.01]
+        c_clip.append(
+            tf.assign(var, tf.clip_by_value(var, clip_bounds[0],
+                                            clip_bounds[1])))
+    clip_code_disc_weight = tf.group(*c_clip)
 
     # for summaries
     with tf.name_scope('Summary'):
@@ -192,6 +190,8 @@ def main():
             _, c_loss = sess.run(
                 [code_discriminator_opt, code_discriminator_loss],
                 feed_dict=feed_dict)
+            sess.run(
+                [clip_disc_weight, clip_code_disc_weight], feed_dict=feed_dict)
 
             sr_img = sess.run(x_super_res, feed_dict=feed_dict)
 

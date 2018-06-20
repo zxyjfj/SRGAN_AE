@@ -3,7 +3,7 @@ import tensorflow as tf
 from utils import lrelu, res_block
 
 
-def encoder(inputs, latern_dim=128, is_GP=False):
+def encoder(inputs, latern_dim=128):
     '''
     inputs: 输入的高分辨图像的tensor[-1, 128, 128, 3]\n
     latern_dim: code的维数
@@ -25,62 +25,22 @@ def encoder(inputs, latern_dim=128, is_GP=False):
     # -----[-1, 64, 64, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     # -----[-1, 32, 32, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     # -----[-1, 16, 16, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     # -----[-1, 8, 8, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     # -----[-1, 4, 4, 128]
 
@@ -91,7 +51,7 @@ def encoder(inputs, latern_dim=128, is_GP=False):
     return x
 
 
-def generator(inputs, is_GP=False):
+def generator(inputs):
     '''
     inputs: 输入的低分辨图像的tensor[-1, 32, 32, 3]\n 
     '''
@@ -110,49 +70,19 @@ def generator(inputs, is_GP=False):
     # -----[-1, 32, 32, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.image.resize_nearest_neighbor(
         x, size=[x.shape[1] * 2, x.shape[2] * 2])
     # -----[-1, 64, 64, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.image.resize_nearest_neighbor(
         x, size=[x.shape[1] * 2, x.shape[2] * 2])
     # -----[-1, 128, 128, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.conv2d(
         x,
         3,
@@ -165,7 +95,7 @@ def generator(inputs, is_GP=False):
     return x
 
 
-def discriminator(inputs, is_GP=False):
+def discriminator(inputs):
     '''
     inputs: 输入的高分辨图像的tensor[-1, 128, 128, 3]\n
     '''
@@ -186,62 +116,22 @@ def discriminator(inputs, is_GP=False):
     # -----[-1, 64, 64, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     # -----[-1, 32, 32, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     # -----[-1, 16, 16, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     # -----[-1, 8, 8, 128]
 
     # -----
-    if is_GP:
-        x = tf.layers.conv2d(
-            x,
-            filters,
-            kernel_size=3,
-            strides=(1, 1),
-            padding='SAME',
-            kernel_initializer=initializer)
-    else:
-        x = res_block(
-            x, filters, kernel_size=3, kernel_initializer=initializer)
+    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     # -----[-1, 4, 4, 128]
 

@@ -1,29 +1,11 @@
 import os
 
-import cv2
 import numpy as np
+import scipy.misc
 import tensorflow as tf
 
 from configs import *
 from model import generator
-
-
-def readpic(filename, shape=[1, 32, 32, 3], ext='jpg'):
-    n, h, w, c = shape
-    if ext == 'jpg' or ext == 'jpeg':
-        decoder = tf.image.decode_jpeg
-    elif ext == 'png':
-        decoder = tf.image.decode_png
-
-    filename_queue = tf.train.string_input_producer(filename, shuffle=False)
-    reader = tf.WholeFileReader()
-    key, value = reader.read(filename_queue)
-    img = decoder(value, channels=c)
-    img = tf.image.crop_to_bounding_box(img, 0, 0, h, w)
-    img = tf.to_float(img)
-
-    t_image = tf.train.batch([img], batch_size=n, capacity=1)
-    return t_image, key
 
 
 def main():
@@ -46,26 +28,33 @@ def main():
     threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
     # Image Super Reslution
-    inferences = generator(test_image, is_GP=True)
+    with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
+        inferences = generator(test_image)
 
     # ========================================
     #           Load Model
     # ========================================
     saver = tf.train.Saver()
-    saver.restore(sess, CHECKPOINTS_PATH)
+    ckpt = tf.train.get_checkpoint_state(CHECKPOINTS_PATH)
+    saver.restore(sess, ckpt.model_checkpoint_path)
 
     # ========================================
     #           Load Image
     # ========================================
-    filename = os.path.join(TEST_DATA_PATH, 'small.png')
-    img = readpic(filename)
-    image = sess.run(img)
+    filename = os.path.join(TEST_DATA_PATH, 'LR_Image.png')
+    image_raw = tf.gfile.FastGFile(filename, 'rb').read()
+    img = tf.image.decode_png(image_raw)
+    img = tf.reshape(img, shape=[1, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
+    image = sess.run(img) / 255.0
 
     sr_img = sess.run(inferences, feed_dict={test_image: image})
 
-    new_img = np.reshape(sr_img, [sr_img[1], sr_img[2], sr_img[2]])
+    new_img = sess.run(tf.reshape(sr_img, shape=[128, 128, 3]))
 
-    cv2.imwrite(os.path.join(TEST_DATA_PATH, 'sr_img.png'), new_img)
+    # Save the image
+    scipy.misc.toimage(
+        new_img, cmin=0.0, cmax=1.0).save(
+            os.path.join(TEST_DATA_PATH, 'HR_Image.png'))
 
     coord.request_stop()
     coord.join(threads=threads)

@@ -6,8 +6,6 @@ TRAIN_SUMMARY_PATH = '../summary'
 CHECKPOINTS_PATH = '../checkpoints'
 
 reconstruction_loss_weight = 40
-# Gradient penalty lambda hyperparameter
-LAMBDA = 10
 
 # 避免出现 log(0)
 EPS = 1e-12
@@ -20,7 +18,7 @@ LABEL_SIZE = SCALE_FACTOR * INPUT_SIZE
 NUM_CHENNELS = 3
 # 需要保存的模型的数
 MAX_CKPT_TO_KEEP = 50
-LEARN_RATE = 8e-4
+LEARN_RATE = 5e-5
 NUM_EPOCH = 100
 
 # patch generation
