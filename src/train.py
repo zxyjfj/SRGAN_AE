@@ -3,15 +3,14 @@ import time
 
 import tensorflow as tf
 
-import data_inputs
 from configs import *
 from model import code_discriminator, discriminator, encoder, generator
-from utils import visualize_samples, load, save
+from utils import batch_queue_for_training, load, save, visualize_samples
 
 
 def main():
     # 导入高分辨和低分辨的图片
-    LR_batch, HR_batch = data_inputs.batch_queue_for_training(TRAIN_DATA_PATH)
+    LR_batch, HR_batch = batch_queue_for_training(TRAIN_DATA_PATH)
 
     coord = tf.train.Coordinator()
 

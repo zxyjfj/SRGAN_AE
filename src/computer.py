@@ -1,18 +1,18 @@
-import skimage
+from skimage import io, measure
 
-SR_image = skimage.io.imread('../data/test/HR_image.png')
-GROUND_TRUTH = skimage.io.imread('../data/ground_truth/202598.png')
+SR_image = io.imread('../data/test/HR_Image.png')
+GROUND_TRUTH = io.imread('../data/ground_truth/202598.png')
 
 # MSE
-mse = skimage.measure.compare_mse(GROUND_TRUTH, SR_image)
+mse = measure.compare_mse(GROUND_TRUTH, SR_image)
 
 # PSNR
-psnr = skimage.measure.compare_psnr(GROUND_TRUTH, SR_image, data_range=255)
+psnr = measure.compare_psnr(GROUND_TRUTH, SR_image, data_range=255)
 
 # SSMI
-ssmi = skimage.measure.compare_ssim(GROUND_TRUTH, SR_image)
+ssmi = measure.compare_ssim(GROUND_TRUTH, SR_image, multichannel=True)
 
-message = 'mse={}, '.format(mse) + 'psnr={}, '.format(
-    psnr) + 'ssmi={}.'.format(ssmi)
+message = 'mse={:5f}, '.format(mse) + 'psnr={:5f}, '.format(
+    psnr) + 'ssmi={:5f}.'.format(ssmi)
 
 print(message)
