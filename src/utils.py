@@ -14,18 +14,12 @@ def batch_queue_for_training(data_path):
     _, image_file = file_reader.read(filename_queue)
     patch = tf.image.decode_png(image_file, NUM_CHENNELS)
     # we must set the shape of the image before making batches
-    patch.set_shape([PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
+    patch.set_shape(PATCH_SIZE + [NUM_CHENNELS])
     patch = tf.image.convert_image_dtype(patch, dtype=tf.float32)
 
     high_res_patch = patch
 
-    crop_margin = PATCH_SIZE - LABEL_SIZE
-    assert crop_margin >= 0
-    if crop_margin > 1:
-        high_res_patch = tf.random_crop(patch,
-                                        [LABEL_SIZE, LABEL_SIZE, NUM_CHENNELS])
-
-    downscale_size = [INPUT_SIZE, INPUT_SIZE]
+    downscale_size = INPUT_SIZE
 
     def resize_nn():
         return tf.image.resize_nearest_neighbor([high_res_patch],
@@ -37,6 +31,8 @@ def batch_queue_for_training(data_path):
     def resize_cubic():
         return tf.image.resize_bicubic([high_res_patch], downscale_size, True)
 
+    # r的值为0，1，2
+    # 当r=0时，采用resize_nn；当r=1时，采用resize_area；当r=2时，采用resize_cubic
     r = tf.random_uniform([], 0, 3, dtype=tf.int32)
     low_res_patch = tf.case(
         {
@@ -46,8 +42,9 @@ def batch_queue_for_training(data_path):
         default=resize_cubic)[0]
 
     # we must set tensor's shape before doing following processes
-    low_res_patch.set_shape([INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
+    low_res_patch.set_shape(INPUT_SIZE + [NUM_CHENNELS])
 
+    # 确保图片的像素点的值在0-1.0范围内
     low_res_patch = tf.clip_by_value(low_res_patch, 0, 1.0)
     high_res_patch = tf.clip_by_value(high_res_patch, 0, 1.0)
 

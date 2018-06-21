@@ -11,18 +11,16 @@ reconstruction_loss_weight = 40
 EPS = 1e-12
 BATCH_SIZE = 64
 # 低分辨图片的大小
-INPUT_SIZE = 32
+INPUT_SIZE = [44, 54]
 SCALE_FACTOR = 4
 # 高分辨图片的大小
-LABEL_SIZE = SCALE_FACTOR * INPUT_SIZE
+PATCH_SIZE = [176, 216]
+# 图片通道数
 NUM_CHENNELS = 3
 # 需要保存的模型的数
 MAX_CKPT_TO_KEEP = 50
 LEARN_RATE = 5e-5
 NUM_EPOCH = 100
-
-# patch generation
-PATCH_SIZE = 128
 
 # data queue
 MIN_QUEUE_EXAMPLES = 1024

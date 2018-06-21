@@ -19,10 +19,10 @@ def main():
     # ========================================
     LR_holders = tf.placeholder(
         dtype=tf.float32,
-        shape=[BATCH_SIZE, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
+        shape=[BATCH_SIZE, INPUT_SIZE[0], INPUT_SIZE[1], NUM_CHENNELS])
     HR_holders = tf.placeholder(
         dtype=tf.float32,
-        shape=[BATCH_SIZE, LABEL_SIZE, LABEL_SIZE, NUM_CHENNELS])
+        shape=[BATCH_SIZE, PATCH_SIZE[0], PATCH_SIZE[1], NUM_CHENNELS])
 
     # ----------------------------------------
     #               Generator
