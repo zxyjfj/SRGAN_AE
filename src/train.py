@@ -113,9 +113,10 @@ def main():
     # ========================================
     #               Important
     # ========================================
+    # c=0.01
+    clip_bounds = [-0.01, 0.01]
     d_clip = []
     for var in discriminator_vars:
-        clip_bounds = [-0.01, 0.01]
         d_clip.append(
             tf.assign(var, tf.clip_by_value(var, clip_bounds[0],
                                             clip_bounds[1])))
@@ -123,7 +124,6 @@ def main():
 
     c_clip = []
     for var in code_discriminator_vars:
-        clip_bounds = [-0.01, 0.01]
         c_clip.append(
             tf.assign(var, tf.clip_by_value(var, clip_bounds[0],
                                             clip_bounds[1])))

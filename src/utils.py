@@ -60,6 +60,9 @@ def batch_queue_for_training(data_path):
 
 
 def visualize_samples(sess, high_imgs, gene_output, n=8, filename=None):
+    '''
+    结果可视化
+    '''
     img = high_imgs[0:n, :, :, :]
     img_ = gene_output[0:n, :, :, :]
     images = tf.concat([img, img_], 2)
@@ -72,6 +75,9 @@ def visualize_samples(sess, high_imgs, gene_output, n=8, filename=None):
 
 
 def load(saver, sess, logdir):
+    '''
+    加载模型
+    '''
     print("Trying to restore checkpoints from {} ...".format(logdir))
     ckpt = tf.train.get_checkpoint_state(logdir)
     if ckpt:
@@ -88,6 +94,9 @@ def load(saver, sess, logdir):
 
 
 def save(saver, sess, logdir, step):
+    '''
+    保存模型
+    '''
     model_name = 'model.ckpt'
     checkpoint_path = os.path.join(logdir, model_name)
     print('Storing checkpoint to {} ...'.format(logdir))
