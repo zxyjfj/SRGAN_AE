@@ -22,30 +22,30 @@ def encoder(inputs, latern_dim=128):
         kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     x = tf.nn.relu(x)
-    # -----[-1, 88, 108, 128]
+    # -----[-1, 64, 64, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
-    # -----[-1, 44, 54, 128]
+    # -----[-1, 32, 32, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
-    # -----[-1, 22, 27, 128]
+    # -----[-1, 16, 16, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
-    # -----[-1, 11, 14, 128]
+    # -----[-1, 8, 8, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
-    # -----[-1, 6, 7, 128]
+    # -----[-1, 4, 4, 128]
 
     # -----
-    x = tf.reshape(x, shape=[-1, 6 * 7 * filters])
+    x = tf.reshape(x, shape=[-1, 4 * 4 * filters])
     x = tf.layers.dense(x, units=latern_dim, kernel_initializer=initializer)
 
     return x
@@ -53,7 +53,7 @@ def encoder(inputs, latern_dim=128):
 
 def generator(inputs):
     '''
-    inputs: 输入的低分辨图像的tensor[-1, 44, 54, 3]\n 
+    inputs: 输入的低分辨图像的tensor[-1, 32, 32, 3]\n 
     '''
     x = inputs
     filters = 128
@@ -67,19 +67,19 @@ def generator(inputs):
         strides=(1, 1),
         padding='SAME',
         kernel_initializer=initializer)
-    # -----[-1, 44, 54, 128]
+    # -----[-1, 32, 32, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.image.resize_nearest_neighbor(
         x, size=[x.shape[1] * 2, x.shape[2] * 2])
-    # -----[-1, 88, 108, 128]
+    # -----[-1, 64, 64, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.image.resize_nearest_neighbor(
         x, size=[x.shape[1] * 2, x.shape[2] * 2])
-    # -----[-1, 176, 216, 128]
+    # -----[-1, 128, 128, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
@@ -97,7 +97,7 @@ def generator(inputs):
 
 def discriminator(inputs):
     '''
-    inputs: 输入的高分辨图像的tensor[-1, 176, 216, 3]\n
+    inputs: 输入的高分辨图像的tensor[-1, 128, 128, 3]\n
     和encoder很像，只是将relu修改为lrelu
     '''
     x = inputs
@@ -114,30 +114,30 @@ def discriminator(inputs):
         kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
     x = lrelu(x)
-    # -----[-1, 88, 108, 128]
+    # -----[-1, 64, 64, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
-    # -----[-1, 44, 54, 128]
+    # -----[-1, 32, 32, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
-    # -----[-1, 22, 27, 128]
+    # -----[-1, 16, 16, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
-    # -----[-1, 11, 14, 128]
+    # -----[-1, 8, 8, 128]
 
     # -----
     x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.average_pooling2d(x, 2, 2, padding='SAME')
-    # -----[-1, 6, 7, 128]
+    # -----[-1, 4, 4, 128]
 
     # -----
-    x = tf.reshape(x, shape=[-1, 6 * 7 * filters])
+    x = tf.reshape(x, shape=[-1, 4 * 4 * filters])
     x = tf.layers.dense(x, units=1, kernel_initializer=initializer)
 
     return x

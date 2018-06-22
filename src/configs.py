@@ -11,10 +11,10 @@ reconstruction_loss_weight = 40
 EPS = 1e-12
 BATCH_SIZE = 64
 # 低分辨图片的大小
-INPUT_SIZE = [44, 54]
+INPUT_SIZE = 32
 SCALE_FACTOR = 4
 # 高分辨图片的大小
-PATCH_SIZE = [176, 216]
+PATCH_SIZE = 128
 # 图片通道数
 NUM_CHENNELS = 3
 # 需要保存的模型的数

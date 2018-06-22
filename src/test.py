@@ -3,7 +3,6 @@ import os
 import numpy as np
 import scipy.misc
 import tensorflow as tf
-from skimage import io, measure
 
 from configs import *
 from model import generator
@@ -57,20 +56,21 @@ def main():
         new_img, cmin=0.0, cmax=1.0).save(
             os.path.join(TEST_DATA_PATH, 'HR_Image.png'))
 
-    SR_image = io.imread('../data/test/HR_Image.png')
-    GROUND_TRUTH = io.imread('../data/ground_truth/202598.png')
+    SR_image = tf.image.decode_png('../data/test/HR_Image.png')
+    GROUND_TRUTH = tf.image.decode_png('../data/ground_truth/202598.png')
 
-    # MSE
-    mse = measure.compare_mse(GROUND_TRUTH, SR_image)
+    # Compute MSE, PSNR and SSIM over tf.float32 Tensors.
+    im1 = tf.image.convert_image_dtype(SR_image, tf.float32)
+    im2 = tf.image.convert_image_dtype(GROUND_TRUTH, tf.float32)
 
-    # PSNR
-    psnr = measure.compare_psnr(GROUND_TRUTH, SR_image, data_range=255)
+    mse = tf.reduce_mean(tf.square(im1 - im2))
 
-    # SSMI
-    ssmi = measure.compare_ssim(GROUND_TRUTH, SR_image, multichannel=True)
+    psnr = tf.image.psnr(im1, im2, max_val=1.0)
 
-    message = 'mse={:5f}, '.format(mse) + 'psnr={:5f}, '.format(
-        psnr) + 'ssmi={:5f}.'.format(ssmi)
+    ssim = tf.image.ssim(im1, im2, max_val=1.0)
+
+    message = 'mse={:5f}, '.format(sess.run(mse)) + 'psnr={:5f}, '.format(
+        sess.run(psnr)) + 'ssmi={:5f}.'.format(sess.run(ssim))
 
     print(message)
 

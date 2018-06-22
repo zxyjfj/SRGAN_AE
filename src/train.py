@@ -24,38 +24,39 @@ def main():
         dtype=tf.float32,
         shape=[BATCH_SIZE, PATCH_SIZE[0], PATCH_SIZE[1], NUM_CHENNELS])
 
+    real_data = HR_holders
     # ----------------------------------------
     #               Generator
 
     with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
-        x_super_res = generator(LR_holders)
+        fake_data = generator(LR_holders)
 
     # ----------------------------------------
     #               Discriminator
 
     with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-        y_fake = discriminator(x_super_res)
+        y_fake = discriminator(fake_data)
 
     with tf.variable_scope('discriminator', reuse=tf.AUTO_REUSE):
-        y_real = discriminator(HR_holders)
+        y_real = discriminator(real_data)
 
     # ----------------------------------------
     #               Encoder
 
     with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
-        HR_encoded = encoder(HR_holders)
+        real_code = encoder(real_data)
 
     with tf.variable_scope('encoder', reuse=tf.AUTO_REUSE):
-        x_encoded = encoder(x_super_res)
+        fake_code = encoder(fake_data)
 
     # ----------------------------------------
     #           Code Discriminator
 
     with tf.variable_scope('code_discriminator', reuse=tf.AUTO_REUSE):
-        c_fake = code_discriminator(x_encoded)
+        c_fake = code_discriminator(fake_code)
 
     with tf.variable_scope('code_discriminator', reuse=tf.AUTO_REUSE):
-        c_real = code_discriminator(HR_encoded)
+        c_real = code_discriminator(real_code)
 
     # ========================================
     #            Create Optimizer
@@ -85,7 +86,7 @@ def main():
     # code_discriminator_loss = tf.reduce_mean(
     #     -tf.log(c_real + EPS)) - tf.reduce_mean(-tf.log(1 - c_fake + EPS))
     reconstruction_loss = tf.reduce_mean(
-        tf.squared_difference(x_super_res, HR_holders))
+        tf.squared_difference(real_data, fake_data))
 
 
 
@@ -113,8 +114,8 @@ def main():
     # ========================================
     #               Important
     # ========================================
-    # c=0.01
-    clip_bounds = [-0.01, 0.01]
+    # c=0.005
+    clip_bounds = [-0.005, 0.005]
     d_clip = []
     for var in discriminator_vars:
         d_clip.append(
@@ -132,7 +133,7 @@ def main():
     # for summaries
     with tf.name_scope('Summary'):
         tf.summary.image('inputs', LR_holders, max_outputs=4)
-        tf.summary.image('generator', x_super_res, max_outputs=4)
+        tf.summary.image('generator', fake_data, max_outputs=4)
         tf.summary.image('targets', HR_holders, max_outputs=4)
         tf.summary.scalar('generator_loss', generator_loss)
         tf.summary.scalar('discriminator_loss', discriminator_loss)
@@ -167,7 +168,7 @@ def main():
 
     num_item_per_epoch = len(os.listdir(TRAIN_DATA_PATH)) // BATCH_SIZE
     time_i = time.time()
-    step = 0
+    step = saved_global_step
 
     for epoch in range(NUM_EPOCH):
         for item in range(num_item_per_epoch):
@@ -192,7 +193,7 @@ def main():
             sess.run(
                 [clip_disc_weight, clip_code_disc_weight], feed_dict=feed_dict)
 
-            sr_img = sess.run(x_super_res, feed_dict=feed_dict)
+            sr_img = sess.run(fake_data, feed_dict=feed_dict)
 
             summary = sess.run(merged_summary, feed_dict=feed_dict)
             summary_writer.add_summary(summary, global_step=step)

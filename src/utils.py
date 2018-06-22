@@ -14,12 +14,16 @@ def batch_queue_for_training(data_path):
     _, image_file = file_reader.read(filename_queue)
     patch = tf.image.decode_png(image_file, NUM_CHENNELS)
     # we must set the shape of the image before making batches
-    patch.set_shape(PATCH_SIZE + [NUM_CHENNELS])
+    patch.set_shape([PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
+    # 将图像的数据格式转换为tf.float32,范围是[0, 1)
     patch = tf.image.convert_image_dtype(patch, dtype=tf.float32)
+
+    # 将图像从rgb转化为hsv
+    # image_rgb_to_hsv = tf.image.rgb_to_hsv(patch)
 
     high_res_patch = patch
 
-    downscale_size = INPUT_SIZE
+    downscale_size = [INPUT_SIZE, INPUT_SIZE]
 
     def resize_nn():
         return tf.image.resize_nearest_neighbor([high_res_patch],
@@ -42,7 +46,7 @@ def batch_queue_for_training(data_path):
         default=resize_cubic)[0]
 
     # we must set tensor's shape before doing following processes
-    low_res_patch.set_shape(INPUT_SIZE + [NUM_CHENNELS])
+    low_res_patch.set_shape([INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
 
     # 确保图片的像素点的值在0-1.0范围内
     low_res_patch = tf.clip_by_value(low_res_patch, 0, 1.0)
