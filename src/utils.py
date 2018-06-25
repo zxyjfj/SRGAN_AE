@@ -9,10 +9,13 @@ from configs import *
 
 def batch_queue_for_training(data_path):
     filename_queue = tf.train.string_input_producer(
-        tf.train.match_filenames_once(os.path.join(data_path, '*.png')))
+        tf.train.match_filenames_once(os.path.join(data_path, '*.jpg')))
     file_reader = tf.WholeFileReader()
     _, image_file = file_reader.read(filename_queue)
-    patch = tf.image.decode_png(image_file, NUM_CHENNELS)
+    patch = tf.image.decode_jpeg(image_file, NUM_CHENNELS)
+
+    patch = tf.image.resize_image_with_crop_or_pad(patch, PATCH_SIZE,
+                                                   PATCH_SIZE)
     # we must set the shape of the image before making batches
     patch.set_shape([PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
     # 将图像的数据格式转换为tf.float32,范围是[0, 1)
@@ -63,13 +66,19 @@ def batch_queue_for_training(data_path):
     return low_res_batch, high_res_batch
 
 
-def visualize_samples(sess, high_imgs, gene_output, n=8, filename=None):
+def visualize_samples(sess,
+                      high_imgs,
+                      gene_output,
+                      interpolation,
+                      n=8,
+                      filename=None):
     '''
     结果可视化
     '''
     img = high_imgs[0:n, :, :, :]
     img_ = gene_output[0:n, :, :, :]
-    images = tf.concat([img, img_], 2)
+    _img = interpolation[0:n, :, :, :]
+    images = tf.concat([img, _img, img_], 2)
 
     images = tf.concat([images[i] for i in range(n)], 0)
 

@@ -1,6 +1,7 @@
 # data path and log path
-TRAIN_DATA_PATH = '../data/train'
+TRAIN_DATA_PATH = '../data/imgs'
 TEST_DATA_PATH = '../data/test'
+TEST_GROUND_TRUTH = '../data/ground_truth'
 INFERENCES_SAVE_PATH = '../imgs'
 TRAIN_SUMMARY_PATH = '../summary'
 CHECKPOINTS_PATH = '../checkpoints'

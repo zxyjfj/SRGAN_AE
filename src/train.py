@@ -19,10 +19,10 @@ def main():
     # ========================================
     LR_holders = tf.placeholder(
         dtype=tf.float32,
-        shape=[BATCH_SIZE, INPUT_SIZE[0], INPUT_SIZE[1], NUM_CHENNELS])
+        shape=[BATCH_SIZE, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
     HR_holders = tf.placeholder(
         dtype=tf.float32,
-        shape=[BATCH_SIZE, PATCH_SIZE[0], PATCH_SIZE[1], NUM_CHENNELS])
+        shape=[BATCH_SIZE, PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
 
     real_data = HR_holders
     # ----------------------------------------
@@ -30,6 +30,12 @@ def main():
 
     with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
         fake_data = generator(LR_holders)
+
+    real_hsv_data = tf.image.rgb_to_hsv(real_data)
+    fake_hsv_data = tf.image.rgb_to_hsv(fake_data)
+
+    interpolation = tf.image.resize_bicubic(LR_holders,
+                                            [PATCH_SIZE, PATCH_SIZE])
 
     # ----------------------------------------
     #               Discriminator
@@ -87,11 +93,14 @@ def main():
     #     -tf.log(c_real + EPS)) - tf.reduce_mean(-tf.log(1 - c_fake + EPS))
     reconstruction_loss = tf.reduce_mean(
         tf.squared_difference(real_data, fake_data))
-
-
+    # 保证图片颜色不变
+    s_loss = tf.reduce_mean(
+        tf.abs(real_hsv_data[:, :, :, 1] - fake_hsv_data[:, :, :, 1]))
+    h_loss = tf.reduce_mean(
+        tf.abs(real_hsv_data[:, :, :, 0] - fake_hsv_data[:, :, :, 0]))
 
     generator_encoder_loss = generator_loss + code_generator_loss \
-    + reconstruction_loss_weight * reconstruction_loss
+    + reconstruction_loss_weight * reconstruction_loss + s_loss + h_loss
 
     # ----------------------------------------
     #               Generator
@@ -134,8 +143,11 @@ def main():
     with tf.name_scope('Summary'):
         tf.summary.image('inputs', LR_holders, max_outputs=4)
         tf.summary.image('generator', fake_data, max_outputs=4)
+        tf.summary.image('interpolation', interpolation, max_outputs=4)
         tf.summary.image('targets', HR_holders, max_outputs=4)
         tf.summary.scalar('generator_loss', generator_loss)
+        tf.summary.scalar('s_loss', s_loss)
+        tf.summary.scalar('h_loss', h_loss)
         tf.summary.scalar('discriminator_loss', discriminator_loss)
         tf.summary.scalar('code_generator_loss', code_generator_loss)
         tf.summary.scalar('code_discriminator_loss', code_discriminator_loss)
@@ -195,6 +207,8 @@ def main():
 
             sr_img = sess.run(fake_data, feed_dict=feed_dict)
 
+            interpolation_img = sess.run(interpolation, feed_dict=feed_dict)
+
             summary = sess.run(merged_summary, feed_dict=feed_dict)
             summary_writer.add_summary(summary, global_step=step)
 
@@ -211,6 +225,7 @@ def main():
             sess,
             HR_images,
             sr_img,
+            interpolation_img,
             filename=os.path.join(INFERENCES_SAVE_PATH,
                                   'trian-epoch-{:03d}.png'.format(epoch + 1)))
 

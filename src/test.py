@@ -8,6 +8,45 @@ from configs import *
 from model import generator
 
 
+def ProcessingImage(sess, filename):
+    print(filename)
+    image_raw = tf.gfile.FastGFile(filename, 'rb').read()
+    image = tf.image.decode_png(image_raw)
+
+    image = tf.image.resize_image_with_crop_or_pad(image, PATCH_SIZE,
+                                                   PATCH_SIZE)
+    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+    downscale_size = [INPUT_SIZE, INPUT_SIZE]
+
+    # r的值为0，1，2
+    # 当r=0时，采用resize_nn；当r=1时，采用resize_area；当r=2时，采用resize_cubic
+    r = sess.run(tf.random_uniform([], 0, 3, dtype=tf.int32))
+    lr_image = tf.image.resize_bicubic([image], downscale_size, True)
+    if r == 0:
+        lr_image = tf.image.resize_nearest_neighbor([image], downscale_size,
+                                                    True)
+    elif r == 1:
+        lr_image = tf.image.resize_area([image], downscale_size, True)
+    elif r == 2:
+        lr_image = tf.image.resize_bicubic([image], downscale_size, True)
+    lr_image = tf.clip_by_value(lr_image, 0, 1.0)
+    lr_image = tf.reshape(lr_image, [INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
+
+    save_filename1 = TEST_DATA_PATH + '/input_image.png'
+
+    save_filename2 = TEST_DATA_PATH + '/target_image.png'
+
+    with tf.gfile.FastGFile(save_filename1, 'wb') as f:
+        _image = tf.image.convert_image_dtype(lr_image, tf.uint8)
+        f.write(sess.run(tf.image.encode_png(_image)))
+
+    with tf.gfile.FastGFile(save_filename2, 'wb') as f:
+        image_ = tf.image.convert_image_dtype(image, dtype=tf.uint8)
+        f.write(sess.run(tf.image.encode_png(image_)))
+
+    return lr_image, image
+
+
 def main():
     # ========================================
     #           Create Network
@@ -41,27 +80,24 @@ def main():
     # ========================================
     #           Load Image
     # ========================================
-    filename = os.path.join(TEST_DATA_PATH, '202598.png')
-    image_raw = tf.gfile.FastGFile(filename, 'rb').read()
-    img = tf.image.decode_png(image_raw)
-    img = tf.reshape(img, shape=[1, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
-    image = sess.run(img) / 255.0
+    filename = os.path.join(TEST_DATA_PATH, '202598.jpg')
+    input_image, target_image = ProcessingImage(sess, filename)
 
-    sr_img = sess.run(inferences, feed_dict={test_image: image})
+    input_image = sess.run(
+        tf.reshape(input_image, [1, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS]))
 
-    new_img = sess.run(tf.reshape(sr_img, shape=[128, 128, 3]))
+    sr_img = sess.run(inferences, feed_dict={test_image: input_image})
+
+    new_img = tf.reshape(sr_img, shape=[PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
 
     # Save the image
     scipy.misc.toimage(
-        new_img, cmin=0.0, cmax=1.0).save(
+        sess.run(new_img), cmin=0.0, cmax=1.0).save(
             os.path.join(TEST_DATA_PATH, 'HR_Image.png'))
 
-    SR_image = tf.image.decode_png('../data/test/HR_Image.png')
-    GROUND_TRUTH = tf.image.decode_png('../data/ground_truth/202598.png')
-
     # Compute MSE, PSNR and SSIM over tf.float32 Tensors.
-    im1 = tf.image.convert_image_dtype(SR_image, tf.float32)
-    im2 = tf.image.convert_image_dtype(GROUND_TRUTH, tf.float32)
+    im1 = new_img
+    im2 = target_image
 
     mse = tf.reduce_mean(tf.square(im1 - im2))
 
