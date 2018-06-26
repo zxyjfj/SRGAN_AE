@@ -1,7 +1,7 @@
 # data path and log path
 TRAIN_DATA_PATH = '../data/imgs'
 TEST_DATA_PATH = '../data/test'
-TEST_GROUND_TRUTH = '../data/ground_truth'
+TEST_GENERATOR_TRUTH = '../data/generator'
 INFERENCES_SAVE_PATH = '../imgs'
 TRAIN_SUMMARY_PATH = '../summary'
 CHECKPOINTS_PATH = '../checkpoints'
@@ -21,7 +21,7 @@ NUM_CHENNELS = 3
 # 需要保存的模型的数
 MAX_CKPT_TO_KEEP = 50
 LEARN_RATE = 5e-5
-NUM_EPOCH = 100
+NUM_EPOCH = 50
 
 # data queue
 MIN_QUEUE_EXAMPLES = 1024

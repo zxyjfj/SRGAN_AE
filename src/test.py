@@ -1,117 +1,108 @@
 import os
 
-import numpy as np
 import scipy.misc
 import tensorflow as tf
 
 from configs import *
 from model import generator
-
-
-def ProcessingImage(sess, filename):
-    print(filename)
-    image_raw = tf.gfile.FastGFile(filename, 'rb').read()
-    image = tf.image.decode_png(image_raw)
-
-    image = tf.image.resize_image_with_crop_or_pad(image, PATCH_SIZE,
-                                                   PATCH_SIZE)
-    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-    downscale_size = [INPUT_SIZE, INPUT_SIZE]
-
-    # r的值为0，1，2
-    # 当r=0时，采用resize_nn；当r=1时，采用resize_area；当r=2时，采用resize_cubic
-    r = sess.run(tf.random_uniform([], 0, 3, dtype=tf.int32))
-    lr_image = tf.image.resize_bicubic([image], downscale_size, True)
-    if r == 0:
-        lr_image = tf.image.resize_nearest_neighbor([image], downscale_size,
-                                                    True)
-    elif r == 1:
-        lr_image = tf.image.resize_area([image], downscale_size, True)
-    elif r == 2:
-        lr_image = tf.image.resize_bicubic([image], downscale_size, True)
-    lr_image = tf.clip_by_value(lr_image, 0, 1.0)
-    lr_image = tf.reshape(lr_image, [INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
-
-    save_filename1 = TEST_DATA_PATH + '/input_image.png'
-
-    save_filename2 = TEST_DATA_PATH + '/target_image.png'
-
-    with tf.gfile.FastGFile(save_filename1, 'wb') as f:
-        _image = tf.image.convert_image_dtype(lr_image, tf.uint8)
-        f.write(sess.run(tf.image.encode_png(_image)))
-
-    with tf.gfile.FastGFile(save_filename2, 'wb') as f:
-        image_ = tf.image.convert_image_dtype(image, dtype=tf.uint8)
-        f.write(sess.run(tf.image.encode_png(image_)))
-
-    return lr_image, image
+from utils import batch_queue_for_testing, load
 
 
 def main():
-    # ========================================
-    #           Create Network
-    # ========================================
-    test_image = tf.placeholder(
-        dtype=tf.float32, shape=[1, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
+    lr_holders = tf.placeholder(
+        dtype=tf.float32,
+        shape=[BATCH_SIZE, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
+    hr_holders = tf.placeholder(
+        dtype=tf.float32,
+        shape=[BATCH_SIZE, PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
 
+    with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
+        inferences = generator(lr_holders)
+
+    low_res_batch, high_res_batch = batch_queue_for_testing(TEST_DATA_PATH)
+
+    # 初始化tensorflow
     sess = tf.Session()
-
     init = [
-        tf.global_variables_initializer(),
-        tf.local_variables_initializer()
+        tf.local_variables_initializer(),
+        tf.global_variables_initializer()
     ]
     sess.run(init)
 
-    coord = tf.train.Coordinator()
+    # the saver will restore all model's variables during training
+    saver = tf.train.Saver(tf.global_variables(), max_to_keep=MAX_CKPT_TO_KEEP)
+    try:
+        saved_global_step = load(saver, sess, CHECKPOINTS_PATH)
+        if saved_global_step is None:
+            saved_global_step = 0
+    except:
+        raise ValueError(
+            "You have changed the model, Please Delete CheckPoints!")
 
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+    tf.train.start_queue_runners(sess=sess)
 
-    # Image Super Reslution
-    with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
-        inferences = generator(test_image)
+    low_res_images, high_res_images = sess.run([low_res_batch, high_res_batch])
 
-    # ========================================
-    #           Load Model
-    # ========================================
-    saver = tf.train.Saver()
-    ckpt = tf.train.get_checkpoint_state(CHECKPOINTS_PATH)
-    saver.restore(sess, ckpt.model_checkpoint_path)
+    feed_dict = {lr_holders: low_res_images, hr_holders: high_res_images}
 
-    # ========================================
-    #           Load Image
-    # ========================================
-    filename = os.path.join(TEST_DATA_PATH, '202598.jpg')
-    input_image, target_image = ProcessingImage(sess, filename)
+    hr_imgs = sess.run(inferences, feed_dict=feed_dict)
 
-    input_image = sess.run(
-        tf.reshape(input_image, [1, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS]))
+    total_mse, total_psnr, total_ssim = 0.0, 0.0, 0.0
 
-    sr_img = sess.run(inferences, feed_dict={test_image: input_image})
+    count = len([
+        name for name in os.listdir(TEST_DATA_PATH)
+        if os.path.isfile(os.path.join(TEST_DATA_PATH, name))
+    ])
 
-    new_img = tf.reshape(sr_img, shape=[PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
+    for i in range(count):
+        # 生成的图片
+        new_image = tf.reshape(hr_imgs[i],
+                               [PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
 
-    # Save the image
-    scipy.misc.toimage(
-        sess.run(new_img), cmin=0.0, cmax=1.0).save(
-            os.path.join(TEST_DATA_PATH, 'HR_Image.png'))
+        # 高分辨率图片
+        target_image = tf.reshape(high_res_images[i],
+                                  [PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
 
-    # Compute MSE, PSNR and SSIM over tf.float32 Tensors.
-    im1 = new_img
-    im2 = target_image
+        # 三次样条插值生成的图片
+        bicubic_image = tf.image.resize_bicubic([lr_holders[i]],
+                                                [PATCH_SIZE, PATCH_SIZE])
 
-    mse = tf.reduce_mean(tf.square(im1 - im2))
+        bicubic_image = tf.reshape(
+            bicubic_image, shape=[PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
 
-    psnr = tf.image.psnr(im1, im2, max_val=1.0)
+        img = tf.concat([target_image, bicubic_image, new_image], 1)
+        # Save the image
+        scipy.misc.toimage(
+            sess.run(img, feed_dict=feed_dict), cmin=0.0, cmax=1.0).save(
+                os.path.join(TEST_GENERATOR_TRUTH,
+                             'HR_Image_{}.png'.format(i)))
 
-    ssim = tf.image.ssim(im1, im2, max_val=1.0)
+        # Compute MSE, PSNR and SSIM over tf.float32 Tensors.
+        im1 = new_image
+        im2 = target_image
 
-    message = 'mse={:5f}, '.format(sess.run(mse)) + 'psnr={:5f}, '.format(
-        sess.run(psnr)) + 'ssmi={:5f}.'.format(sess.run(ssim))
+        mse = sess.run(tf.reduce_mean(tf.square(im1 - im2)))
+        total_mse += mse
 
-    print(message)
+        psnr = sess.run(tf.image.psnr(im1, im2, max_val=1.0))
+        total_psnr += psnr
 
-    coord.request_stop()
-    coord.join(threads=threads)
+        ssim = sess.run(tf.image.ssim(im1, im2, max_val=1.0))
+        total_ssim += ssim
+
+        message = 'Pic {} '.format(i) + 'mse={:5f}, '.format(
+            mse) + 'psnr={:5f}, '.format(psnr) + 'ssmi={:5f}.'.format(ssim)
+
+        print(message)
+
+    average_mse = total_mse / count
+    average_psnr = total_psnr / count
+    average_ssim = total_ssim / count
+
+    msg = 'average_mse={:5f}, '.format(
+        average_mse) + 'average_psnr={:5f}, '.format(
+            average_psnr) + 'average_ssim={:5f}.'.format(average_ssim)
+    print(msg)
 
 
 if __name__ == '__main__':

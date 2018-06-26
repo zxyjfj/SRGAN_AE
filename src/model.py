@@ -82,7 +82,8 @@ def generator(inputs):
     # -----[-1, 128, 128, 128]
 
     # -----
-    x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
+    for i in range(2):
+        x = res_block(x, filters, kernel_size=3, kernel_initializer=initializer)
     x = tf.layers.conv2d(
         x,
         3,

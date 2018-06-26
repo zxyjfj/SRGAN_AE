@@ -10,31 +10,31 @@ from utils import batch_queue_for_training, load, save, visualize_samples
 
 def main():
     # 导入高分辨和低分辨的图片
-    LR_batch, HR_batch = batch_queue_for_training(TRAIN_DATA_PATH)
+    lr_batch, hr_batch = batch_queue_for_training(TRAIN_DATA_PATH)
 
     coord = tf.train.Coordinator()
 
     # ========================================
     #           Create Network
     # ========================================
-    LR_holders = tf.placeholder(
+    lr_holders = tf.placeholder(
         dtype=tf.float32,
         shape=[BATCH_SIZE, INPUT_SIZE, INPUT_SIZE, NUM_CHENNELS])
-    HR_holders = tf.placeholder(
+    hr_holders = tf.placeholder(
         dtype=tf.float32,
         shape=[BATCH_SIZE, PATCH_SIZE, PATCH_SIZE, NUM_CHENNELS])
 
-    real_data = HR_holders
+    real_data = hr_holders
     # ----------------------------------------
     #               Generator
 
     with tf.variable_scope('generator', reuse=tf.AUTO_REUSE):
-        fake_data = generator(LR_holders)
+        fake_data = generator(lr_holders)
 
     real_hsv_data = tf.image.rgb_to_hsv(real_data)
     fake_hsv_data = tf.image.rgb_to_hsv(fake_data)
 
-    interpolation = tf.image.resize_bicubic(LR_holders,
+    interpolation = tf.image.resize_bicubic(lr_holders,
                                             [PATCH_SIZE, PATCH_SIZE])
 
     # ----------------------------------------
@@ -123,8 +123,8 @@ def main():
     # ========================================
     #               Important
     # ========================================
-    # c=0.005
-    clip_bounds = [-0.005, 0.005]
+    # c=0.01
+    clip_bounds = [-0.01, 0.01]
     d_clip = []
     for var in discriminator_vars:
         d_clip.append(
@@ -141,10 +141,10 @@ def main():
 
     # for summaries
     with tf.name_scope('Summary'):
-        tf.summary.image('inputs', LR_holders, max_outputs=4)
+        tf.summary.image('inputs', lr_holders, max_outputs=4)
         tf.summary.image('generator', fake_data, max_outputs=4)
         tf.summary.image('interpolation', interpolation, max_outputs=4)
-        tf.summary.image('targets', HR_holders, max_outputs=4)
+        tf.summary.image('targets', hr_holders, max_outputs=4)
         tf.summary.scalar('generator_loss', generator_loss)
         tf.summary.scalar('s_loss', s_loss)
         tf.summary.scalar('h_loss', h_loss)
@@ -184,9 +184,9 @@ def main():
 
     for epoch in range(NUM_EPOCH):
         for item in range(num_item_per_epoch):
-            LR_images, HR_images = sess.run([LR_batch, HR_batch])
+            lr_images, hr_images = sess.run([lr_batch, hr_batch])
 
-            feed_dict = {LR_holders: LR_images, HR_holders: HR_images}
+            feed_dict = {lr_holders: lr_images, hr_holders: hr_images}
 
             # ------------------train G twice-------------------
             _, gene_loss = sess.run(
@@ -223,7 +223,7 @@ def main():
 
         visualize_samples(
             sess,
-            HR_images,
+            hr_images,
             sr_img,
             interpolation_img,
             filename=os.path.join(INFERENCES_SAVE_PATH,
